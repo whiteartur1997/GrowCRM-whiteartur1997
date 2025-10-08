@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { createEmployee } from "../../redux/action/user";
-import { useNavigate } from "react-router-dom";
-import Topbar from "./Topbar";
+import {createClient, createEmployee} from "../../redux/action/user";
 import {
   Divider,
   Dialog,
@@ -11,39 +9,52 @@ import {
   Slide,
   DialogActions,
   TextField,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
 } from "@mui/material";
 import { PiNotepad, PiXLight } from "react-icons/pi";
-import { CFormSelect } from "@coreui/react";
-import { pakistanCities } from "../../constant";
 import {Controller, useForm} from "react-hook-form";
 
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="down" ref={ref} {...props} />;
 });
 
-const CreateUser = ({ open, setOpen, scroll }) => {
+const employeeDefaultValues = {
+  firstName: "",
+  lastName: "",
+  username: "",
+  password: "",
+  phone: "",
+  email: "",
+}
+
+const clientDefaultValues = {
+  firstName: "",
+  lastName: "",
+  username: "",
+  phone: "",
+  email: "",
+}
+
+const CreateUser = ({ open, setOpen, scroll, type = "employee" }) => {
   //////////////////////////////////////// VARIABLES /////////////////////////////////////
   const { isFetching } = useSelector((state) => state.user);
   const dispatch = useDispatch();
-  const { reset, control, handleSubmit, formState: { errors }, getValues } = useForm({
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      username: "",
-      password: "",
-      phone: "",
-      email: "",
-    }
+  const entity = type === 'client' ? 'Client' : 'Employee'
+  const { reset, control, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: type === 'client' ? clientDefaultValues : employeeDefaultValues,
   })
 
-  const onSubmit = (data) => {
-    console.log("hey")
-    dispatch(createEmployee(data, setOpen))
-    reset()
-  }
+  const onSubmit = async (data) => {
+    try {
+      if (entity === "Client") {
+        await dispatch(createClient(data, setOpen));
+      } else {
+        await dispatch(createEmployee(data, setOpen));
+      }
+      reset();
+    } catch (error) {
+      console.error(`Failed to create ${entity}`, error);
+    }
+  };
 
   const handleClose = () => {
     setOpen(false);
@@ -63,7 +74,7 @@ const CreateUser = ({ open, setOpen, scroll }) => {
         aria-describedby="alert-dialog-slide-description">
         <form onSubmit={handleSubmit(onSubmit)}>
         <DialogTitle className="flex items-center justify-between">
-          <div className="text-sky-400 font-primary">Add New Employee</div>
+          <div className="text-sky-400 font-primary">Add New {entity}</div>
           <div className="cursor-pointer" onClick={handleClose}>
             <PiXLight className="text-[25px]" />
           </div>
@@ -72,10 +83,11 @@ const CreateUser = ({ open, setOpen, scroll }) => {
           <div className="flex flex-col gap-2 p-3 text-gray-500 font-primary">
             <div className="text-xl flex justify-start items-center gap-2 font-normal">
               <PiNotepad size={23} />
-              <span>Employee Detials</span>
+              <span>{entity} Details</span>
             </div>
             <Divider />
                 <table className="mt-4">
+                    <tbody>
                     <tr>
                       <td className="pb-4 text-lg">First Name </td>
                       <td className="pb-4">
@@ -158,13 +170,14 @@ const CreateUser = ({ open, setOpen, scroll }) => {
                             name="email"
                             control={control}
                             rules={{
+                              required: entity === "Client" ? "Email is required" : false,
                               pattern: {
                                 value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                                 message: "Enter a valid email address",
                               },
                             }}
                             render={({ field }) => <div>
-                              <TextField placeholder="Optional" type="email" size="small" fullWidth {...field}/>
+                              <TextField placeholder={entity === "Employee" && "Optional"} type="email" size="small" fullWidth {...field}/>
                               {errors[field.name] && (
                                   <div style={{ color: "crimson", fontSize: 12 }}>
                                     {errors[field.name].message}
@@ -175,31 +188,33 @@ const CreateUser = ({ open, setOpen, scroll }) => {
                         />
                       </td>
                     </tr>
-                    <tr>
-                      <td className="flex items-start pt-2 text-lg">Password </td>
-                      <td className="pb-4">
-                        <Controller
-                            name="password"
-                            control={control}
-                            rules={{
-                              required: "Password is required",
-                              minLength: { value: 2, message: "Password must be at least 2 characters" },
-                              maxLength: { value: 20, message: "Password must be at most 20 characters" },
-                              validate: (v) =>
-                                  v.trim() !== "" || "Password cannot be only spaces",
-                            }}
-                            render={({ field }) => <div>
-                              <TextField type="password" size="small" fullWidth {...field}/>
-                              {errors[field.name] && (
-                                  <div style={{ color: "crimson", fontSize: 12 }}>
-                                    {errors[field.name].message}
-                                  </div>
-                              )}
-                            </div>
-                            }
-                        />
-                      </td>
-                    </tr>
+                  {
+                    entity === 'Employee' &&  <tr>
+                        <td className="flex items-start pt-2 text-lg">Password </td>
+                        <td className="pb-4">
+                          <Controller
+                              name="password"
+                              control={control}
+                              rules={{
+                                required: "Password is required",
+                                minLength: { value: 2, message: "Password must be at least 2 characters" },
+                                maxLength: { value: 20, message: "Password must be at most 20 characters" },
+                                validate: (v) =>
+                                    v.trim() !== "" || "Password cannot be only spaces",
+                              }}
+                              render={({ field }) => <div>
+                                <TextField type="password" size="small" fullWidth {...field}/>
+                                {errors[field.name] && (
+                                    <div style={{ color: "crimson", fontSize: 12 }}>
+                                      {errors[field.name].message}
+                                    </div>
+                                )}
+                              </div>
+                              }
+                          />
+                        </td>
+                      </tr>
+                  }
                     <tr>
                       <td className="flex items-start pt-2 text-lg">Phone </td>
                       <td className="pb-4">
@@ -225,19 +240,18 @@ const CreateUser = ({ open, setOpen, scroll }) => {
                         />
                       </td>
                     </tr>
+                    </tbody>
                 </table>
           </div>
         </DialogContent>
         <DialogActions>
           <button
             onClick={handleClose}
-            variant="contained"
             type="reset"
             className="bg-[#d7d7d7] px-4 py-2 rounded-lg text-gray-500 mt-4 hover:text-white hover:bg-[#6c757d] border-[2px] border-[#efeeee] hover:border-[#d7d7d7] font-thin transition-all">
             Cancel
           </button>
           <button
-            variant="contained"
             type="submit"
             className="bg-primary-red px-4 py-2 rounded-lg text-white mt-4 hover:bg-red-400 font-thin">
             {isFetching ? 'Submitting...' : 'Submit'}
